@@ -14,7 +14,7 @@ dependencies {
 	optional(project(":spring-context"))
 	optional(project(":spring-jdbc"))
 	optional(project(":spring-orm"))
-	optional(project(":spring-tx"))
+	compile(project(":spring-tx"))
 	optional(project(":spring-web"))
 	optional(project(":spring-webflux"))
 	optional(project(":spring-webmvc"))
