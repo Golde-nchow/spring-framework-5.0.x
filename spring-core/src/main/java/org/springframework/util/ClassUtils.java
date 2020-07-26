@@ -81,20 +81,20 @@ public abstract class ClassUtils {
 
 
 	/**
-	 * Map with primitive wrapper type as key and corresponding primitive
-	 * type as value, for example: Integer.class -> int.class.
+	 * 存储了【包装的基本类型 Class 对象】，对应的【基本类型 Class 对象】的映射。
+	 * 例如: Integer.class -> int.class.
 	 */
 	private static final Map<Class<?>, Class<?>> primitiveWrapperTypeMap = new IdentityHashMap<>(8);
 
 	/**
-	 * Map with primitive type as key and corresponding wrapper
-	 * type as value, for example: int.class -> Integer.class.
+	 * 存储了【基本类型 Class 对象】，对应的【包装的基本类型 Class对象】的映射。
+	 * 例如: int.class -> Integer.class.
 	 */
 	private static final Map<Class<?>, Class<?>> primitiveTypeToWrapperMap = new IdentityHashMap<>(8);
 
 	/**
-	 * Map with primitive type name as key and corresponding primitive
-	 * type as value, for example: "int" -> "int.class".
+	 * 存储了基本类型，对应的【基本类型 Class 对象的映射】
+	 * 例如："int" -> "int.class"
 	 */
 	private static final Map<String, Class<?>> primitiveTypeNameMap = new HashMap<>(32);
 
@@ -123,12 +123,15 @@ public abstract class ClassUtils {
 
 		// Map entry iteration is less expensive to initialize than forEach with lambdas
 		for (Map.Entry<Class<?>, Class<?>> entry : primitiveWrapperTypeMap.entrySet()) {
+			// 存储 Map<double.class, Double.class>
 			primitiveTypeToWrapperMap.put(entry.getValue(), entry.getKey());
+			// 存储 Map<Double, Double.class>
 			registerCommonClasses(entry.getKey());
 		}
 
 		Set<Class<?>> primitiveTypes = new HashSet<>(32);
 		primitiveTypes.addAll(primitiveWrapperTypeMap.values());
+		// 基本类型的数组形式
 		Collections.addAll(primitiveTypes, boolean[].class, byte[].class, char[].class,
 				double[].class, float[].class, int[].class, long[].class, short[].class);
 		primitiveTypes.add(void.class);
@@ -153,7 +156,13 @@ public abstract class ClassUtils {
 
 
 	/**
-	 * Register the given common classes with the ClassUtils cache.
+	 * 将公共 Class 缓存到 cache中
+	 * 包含：
+	 * Map<Double, Double.class> 等
+	 * Map<Number, Number.class> 等
+	 * Map<Throwable, Throwable.class> 等
+	 * Map<Iterable, Iterable.class> 等
+	 * Map<Serializable, Iterable.class> 等
 	 */
 	private static void registerCommonClasses(Class<?>... commonClasses) {
 		for (Class<?> clazz : commonClasses) {
@@ -179,16 +188,17 @@ public abstract class ClassUtils {
 	public static ClassLoader getDefaultClassLoader() {
 		ClassLoader cl = null;
 		try {
+			// 首先是获取当前线程的 ClassLoader
 			cl = Thread.currentThread().getContextClassLoader();
 		}
 		catch (Throwable ex) {
 			// Cannot access thread context ClassLoader - falling back...
 		}
 		if (cl == null) {
-			// No thread context class loader -> use class loader of this class.
+			// 使用当前类的 ClassLoader
 			cl = ClassUtils.class.getClassLoader();
 			if (cl == null) {
-				// getClassLoader() returning null indicates the bootstrap ClassLoader
+				// 使用 Bootstrap ClassLoader
 				try {
 					cl = ClassLoader.getSystemClassLoader();
 				}
@@ -221,10 +231,8 @@ public abstract class ClassUtils {
 	}
 
 	/**
-	 * Replacement for {@code Class.forName()} that also returns Class instances
-	 * for primitives (e.g. "int") and array class names (e.g. "String[]").
-	 * Furthermore, it is also capable of resolving inner class names in Java source
-	 * style (e.g. "java.lang.Thread.State" instead of "java.lang.Thread$State").
+	 * 代替 Class.forName()，对于基本类型 和 数组类型，同样返回 Class 实例.
+	 *
 	 * @param name the name of the Class
 	 * @param classLoader the class loader to use
 	 * (may be {@code null}, which indicates the default class loader)
@@ -236,9 +244,11 @@ public abstract class ClassUtils {
 	public static Class<?> forName(String name, @Nullable ClassLoader classLoader)
 			throws ClassNotFoundException, LinkageError {
 
+		// 校验要解析的类的名称.
 		Assert.notNull(name, "Name must not be null");
-
+		// int -> int.class 以及对应的数组类型（除了String外）
 		Class<?> clazz = resolvePrimitiveClassName(name);
+		// 如果不是基本类型，那么就从公共类型找
 		if (clazz == null) {
 			clazz = commonClassCache.get(name);
 		}
@@ -246,32 +256,39 @@ public abstract class ClassUtils {
 			return clazz;
 		}
 
-		// "java.lang.String[]" style arrays
+		// 如果不是公共类型，那么判断是不是数组
 		if (name.endsWith(ARRAY_SUFFIX)) {
+			// 如果是数组，那么减去 []，剩下的就是类型
 			String elementClassName = name.substring(0, name.length() - ARRAY_SUFFIX.length());
 			Class<?> elementClass = forName(elementClassName, classLoader);
 			return Array.newInstance(elementClass, 0).getClass();
 		}
 
-		// "[Ljava.lang.String;" style arrays
+		// 如果是以 "[L" 开头，并且 ";" 结尾的，说明不是数组类型前缀
+		// "[L java.lang.String;"
 		if (name.startsWith(NON_PRIMITIVE_ARRAY_PREFIX) && name.endsWith(";")) {
+			// 除去 "[L" 以及 ";" 剩下 java.lang.String
 			String elementName = name.substring(NON_PRIMITIVE_ARRAY_PREFIX.length(), name.length() - 1);
 			Class<?> elementClass = forName(elementName, classLoader);
 			return Array.newInstance(elementClass, 0).getClass();
 		}
 
-		// "[[I" or "[[Ljava.lang.String;" style arrays
+		// "[[I" or "[[Ljava.lang.String;"
+		// 如果是内部数组的类型，那么就除去第一个 "["
 		if (name.startsWith(INTERNAL_ARRAY_PREFIX)) {
 			String elementName = name.substring(INTERNAL_ARRAY_PREFIX.length());
 			Class<?> elementClass = forName(elementName, classLoader);
 			return Array.newInstance(elementClass, 0).getClass();
 		}
 
+		// 校验类加载器
 		ClassLoader clToUse = classLoader;
 		if (clToUse == null) {
+			// 如果类加载器为空，那么使用
 			clToUse = getDefaultClassLoader();
 		}
 		try {
+			// 使用类加载器加载该类
 			return (clToUse != null ? clToUse.loadClass(name) : Class.forName(name));
 		}
 		catch (ClassNotFoundException ex) {
@@ -422,11 +439,10 @@ public abstract class ClassUtils {
 	}
 
 	/**
-	 * Resolve the given class name as primitive class, if appropriate,
-	 * according to the JVM's naming rules for primitive classes.
-	 * <p>Also supports the JVM's internal class names for primitive arrays.
-	 * Does <i>not</i> support the "[]" suffix notation for primitive arrays;
-	 * this is only supported by {@link #forName(String, ClassLoader)}.
+	 * 根据 JVM 基本类型的命名规则，将给出的 class name 解析为基础类型，如果合适的话。
+	 * 同样支持基本类型的数组形式，但是不支持把 "[]" 放在后面的形式.
+	 * 除非使用的是这个方法 {@link #forName(String, ClassLoader)}.
+	 *
 	 * @param name the name of the potentially primitive class
 	 * @return the primitive class, or {@code null} if the name does not denote
 	 * a primitive class or primitive array class
@@ -434,10 +450,10 @@ public abstract class ClassUtils {
 	@Nullable
 	public static Class<?> resolvePrimitiveClassName(@Nullable String name) {
 		Class<?> result = null;
-		// Most class names will be quite long, considering that they
-		// SHOULD sit in a package, so a length check is worthwhile.
+		// 由于很多类的名称是很长的，而基本类型的名称很短，在这判断可以过滤掉很多类.
 		if (name != null && name.length() <= 8) {
-			// Could be a primitive - likely.
+			// primitiveTypeNameMap 存储了所有基本类型的映射【int -> int.class】
+			// 然后获取对应的 Class 对象
 			result = primitiveTypeNameMap.get(name);
 		}
 		return result;
