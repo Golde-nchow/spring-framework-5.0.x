@@ -43,8 +43,9 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * Performs the actual initialization work for the root application context.
- * Called by {@link ContextLoaderListener}.
+ * 在【spring-web】项目中的类。
+ *
+ * 为根应用上下文提供实际的初始化工作，被 {@link ContextLoaderListener} 调用。
  *
  * <p>Looks for a {@link #CONTEXT_CLASS_PARAM "contextClass"} parameter at the
  * {@code web.xml} context-param level to specify the context class type, falling
@@ -57,7 +58,7 @@ import org.springframework.util.StringUtils;
  * file paths which can be separated by any number of commas and spaces, e.g.
  * "WEB-INF/applicationContext1.xml, WEB-INF/applicationContext2.xml".
  * Ant-style path patterns are supported as well, e.g.
- * "WEB-INF/*Context.xml,WEB-INF/spring*.xml" or "WEB-INF/&#42;&#42;/*Context.xml".
+ * "WEB-INF/*Context.xml,WEB-INF/spring*.xml" or "WEB-INF/&#42;&#42;(两个*)/*Context.xml".
  * If not explicitly specified, the context implementation is supposed to use a
  * default location (with XmlWebApplicationContext: "/WEB-INF/applicationContext.xml").
  *
